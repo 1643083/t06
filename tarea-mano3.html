@@ -1,0 +1,52 @@
+<script>
+  let handPose
+  let video
+  let hands = []
+
+  function preload() {
+    handPose = ml5.handPose()
+  }
+
+  function setup() {
+    let lienzo = createCanvas(640, 480)
+    lienzo.parent('ml5-result')
+
+    video = createCapture(VIDEO)
+    video.size(640, 480)
+    video.hide()
+
+    handPose.detectStart(video, gotHands)
+  }
+
+  function gotHands(results) {
+    hands = results
+  }
+
+  function draw() {
+    image(video, 0, 0, width, height)
+
+    if (hands.length > 0) {
+      let indice = hands[0].index_finger_tip
+      let pulgar = hands[0].thumb_tip
+
+      // Distancia entre los dos dedos
+      let d = dist(indice.x, indice.y, pulgar.x, pulgar.y)
+
+      // Punto medio
+      let cx = (indice.x + pulgar.x) / 2
+      let cy = (indice.y + pulgar.y) / 2
+
+      // 3 colores segun la distancia
+      if (d < 40) {
+        fill(255, 0, 0)      // rojo dedos juntos
+      } else if (d < 100) {
+        fill(255, 220, 0)    // amarillo distancia media
+      } else {
+        fill(0, 200, 0)      // verde dedos separados
+      }
+
+      noStroke()
+      circle(cx, cy, 50)
+    }
+  }
+</script>

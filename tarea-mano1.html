@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mano 1 - Círculo en el índice</title>
+    <link rel="stylesheet" href="./styles/styles.css" />
+  </head>
+  <body style="background-color: antiquewhite;">
+    <div class="contenedor">
+      <h2>Seguimiento del dedo índice</h2>
+      <hr />
+      <div id="ml5-result"><!-- Renderizar el canvas --></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.js"></script>
+    <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+
+    <script>
+      let handPose
+      let video
+      let hands = [] // manos detectadas
+
+      // Cargar el modelo
+      function preload() {
+        handPose = ml5.handPose()
+      }
+
+      function setup() {
+        let lienzo = createCanvas(640, 480)
+        lienzo.parent('ml5-result')
+
+        // Abrir la cámara y ocultar el <video> original
+        video = createCapture(VIDEO)
+        video.size(640, 480)
+        video.hide()
+
+        // Empezar a detectar manos en el video
+        handPose.detectStart(video, gotHands)
+      }
+
+      // Se llama sola cada vez que el modelo tiene resultados
+      function gotHands(results) {
+        hands = results
+      }
+
+      function draw() {
+        // 1. Pintar el video en el canvas
+        image(video, 0, 0, width, height)
+
+        // 2. Si hay al menos una mano dibujar el círculo
+        if (hands.length > 0) {
+          let dedo = hands[0].index_finger_tip
+
+          fill(255, 0, 0)
+          noStroke()
+          circle(dedo.x, dedo.y, 40) // x, y, diámetro (mediano)
+        }
+      }
+    </script>
+  </body>
+</html>

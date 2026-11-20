@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reconocimiento de objetos</title>
+    <style>
+      body { font-family: Arial, sans-serif; background: #e9eaf0; display: flex; justify-content: center; }
+      .tarjeta { background: white; border-radius: 16px; padding: 20px; width: 360px; margin-top: 20px; }
+      #camara canvas { width: 100%; border-radius: 8px; }
+      h3 { color: #555; font-weight: normal; }
+      .fila { display: flex; align-items: center; margin: 12px 0; }
+      .etiqueta { width: 90px; font-weight: bold; font-size: 14px; }
+      .fondo { flex: 1; height: 32px; border-radius: 8px; overflow: hidden; }
+      .barra { height: 100%; width: 0%; color: white; font-size: 12px; font-weight: bold;
+               display: flex; align-items: center; justify-content: flex-end;
+               padding-right: 8px; box-sizing: border-box; transition: width 0.2s; }
+      button { width: 100%; padding: 10px; border: none; border-radius: 8px; margin-top: 10px;
+               background: #e8710a; color: white; font-size: 15px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="tarjeta">
+      <div id="camara"></div>
+      <button id="btnVoz">Iniciar voz</button>
+      <h3>Salida</h3>
+      <div id="salida"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+    <script>
+      const COLORES = ["#e8710a", "#d6457a", "#7c4dff", "#1a9e6f", "#2b7de9"]
+      const FONDOS  = ["#fdebd9", "#fde7ee", "#efeaff", "#dff5ec", "#e0ecfd"]
+
+      let model, webcam
+      let barras = []
+      let vozActiva = false
+      let ultimaEtiqueta = ""
+
+      document.getElementById("btnVoz").onclick = () => {
+        vozActiva = true
+        document.getElementById("btnVoz").textContent = "Voz activada ✔"
+        speechSynthesis.speak(new SpeechSynthesisUtterance("")) // "desbloquea" el audio
+      }
+
+      async function iniciar() {
+        model = await tmImage.load("./modelo/model.json", "./modelo/metadata.json")
+
+        webcam = new tmImage.Webcam(360, 270, true) // ancho, alto, espejo
+        await webcam.setup()
+        await webcam.play()
+        document.getElementById("camara").appendChild(webcam.canvas)
+
+        crearBarras(model.getClassLabels())
+        window.requestAnimationFrame(bucle)
+      }
+
+      function crearBarras(etiquetas) {
+        let salida = document.getElementById("salida")
+        etiquetas.forEach((nombre, i) => {
+          let fila = document.createElement("div")
+          fila.className = "fila"
+          fila.innerHTML = `
+            <div class="etiqueta" style="color:${COLORES[i % 5]}">${nombre}</div>
+            <div class="fondo" style="background:${FONDOS[i % 5]}">
+              <div class="barra" style="background:${COLORES[i % 5]}"></div>
+            </div>`
+          salida.appendChild(fila)
+          barras.push(fila.querySelector(".barra"))
+        })
+      }
+
+      async function bucle() {
+        webcam.update()
+        await predecir()
+        window.requestAnimationFrame(bucle)
+      }
+
+      async function predecir() {
+        let prediccion = await model.predict(webcam.canvas)
+
+        let mejor = prediccion[0]
+        prediccion.forEach((p, i) => {
+          let porcentaje = Math.round(p.probability * 100)
+          barras[i].style.width = porcentaje + "%"
+          barras[i].textContent = porcentaje > 8 ? porcentaje + "%" : ""
+          if (p.probability > mejor.probability) mejor = p
+        })
+
+        if (mejor.probability > 0.9 && mejor.className !== ultimaEtiqueta) {
+          ultimaEtiqueta = mejor.className
+          hablar(mejor.className)
+        } else if (mejor.probability < 0.6) {
+          ultimaEtiqueta = "" // permite volver a anunciar cuando reaparezca
+        }
+      }
+
+      function hablar(texto) {
+        if (!vozActiva) return
+        let voz = new SpeechSynthesisUtterance(texto)
+        voz.lang = "es-ES"
+        speechSynthesis.cancel()
+        speechSynthesis.speak(voz)
+      }
+
+      iniciar()
+    </script>
+  </body>
+</html>

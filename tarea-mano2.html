@@ -1,0 +1,38 @@
+<script>
+  let handPose
+  let video
+  let hands = []
+
+  function preload() {
+    handPose = ml5.handPose({ maxHands: 2 })
+  }
+
+  function setup() {
+    let lienzo = createCanvas(640, 480)
+    lienzo.parent('ml5-result')
+
+    video = createCapture(VIDEO)
+    video.size(640, 480)
+    video.hide()
+
+    handPose.detectStart(video, gotHands)
+  }
+
+  function gotHands(results) {
+    hands = results
+  }
+
+  function draw() {
+    image(video, 0, 0, width, height)
+
+    // Solo dibujar cuando se detectan ambas manos
+    if (hands.length >= 2) {
+      let indiceA = hands[0].index_finger_tip
+      let indiceB = hands[1].index_finger_tip
+
+      stroke(0, 200, 0)
+      strokeWeight(6)
+      line(indiceA.x, indiceA.y, indiceB.x, indiceB.y)
+    }
+  }
+</script>
